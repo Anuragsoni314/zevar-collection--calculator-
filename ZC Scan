@@ -1,0 +1,195 @@
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/username/zevar-calculator.git
+git push -u origin main
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zevar Collection – Jewellery Price Guide</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.0.2/tesseract.min.js"></script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #ffefba, #ffffff);
+            color: #333;
+        }
+        .container {
+            max-width: 500px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            border: 3px solid gold;
+        }
+        h2 {
+            text-align: center;
+            font-weight: 600;
+            color: #b8860b;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background: gold;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        button:hover {
+            background: darkgoldenrod;
+            color: white;
+        }
+        #result {
+            margin-top: 20px;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            background: #fff8dc;
+            border-radius: 5px;
+        }
+        #scanner {
+            margin-top: 10px;
+            text-align: center;
+        }
+        video {
+            width: 100%;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Zevar Collection – Jewellery Price Guide</h2>
+
+        <label>Live Rate (per 10 gm in ₹):</label>
+        <input type="number" id="liveRate" placeholder="Enter or scan rate">
+        <button onclick="startCamera('liveRate')">📷 Scan Rate</button>
+
+        <label>Weight (in grams):</label>
+        <input type="number" id="weight" placeholder="Enter or scan weight">
+        <button onclick="startCamera('weight')">📷 Scan Weight</button>
+
+        <label>Karat:</label>
+        <select id="karat">
+            <option value="22">22K (91.6%)</option>
+            <option value="18">18K (75%)</option>
+        </select>
+
+        <label>Making Charge per gram:</label>
+        <input type="number" id="makingCharge" value="999">
+
+        <label>Discount on Making Charge (%):</label>
+        <input type="number" id="discount" placeholder="Enter discount %" value="0">
+
+        <label>GST (%):</label>
+        <input type="number" id="gst" value="3">
+
+        <button onclick="calculatePrice()">Calculate Price</button>
+        <div id="result"></div>
+
+        <div id="scanner" style="display: none;">
+            <video id="video" autoplay></video>
+            <button onclick="captureImage()">📸 Capture</button>
+            <canvas id="canvas" style="display: none;"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let currentField = "";
+
+        function startCamera(field) {
+            currentField = field;
+            document.getElementById("scanner").style.display = "block";
+            let video = document.getElementById("video");
+
+            navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+                video.srcObject = stream;
+            });
+        }
+
+        function captureImage() {
+            let video = document.getElementById("video");
+            let canvas = document.getElementById("canvas");
+            let context = canvas.getContext("2d");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            let imageData = canvas.toDataURL("image/png");
+
+            Tesseract.recognize(
+                imageData,
+                'eng',
+                { logger: (m) => console.log(m) }
+            ).then(({ data: { text } }) => {
+                let extractedText = text.replace(/\D/g, ''); // Extract only numbers
+                document.getElementById(currentField).value = extractedText;
+                stopCamera();
+            });
+        }
+
+        function stopCamera() {
+            let video = document.getElementById("video");
+            let stream = video.srcObject;
+            if (stream) {
+                let tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+            document.getElementById("scanner").style.display = "none";
+        }
+
+        function calculatePrice() {
+            let liveRatePer10gm = parseFloat(document.getElementById("liveRate").value);
+            let weight = parseFloat(document.getElementById("weight").value);
+            let karat = parseFloat(document.getElementById("karat").value);
+            let makingCharge = parseFloat(document.getElementById("makingCharge").value);
+            let discount = parseFloat(document.getElementById("discount").value);
+            let gst = parseFloat(document.getElementById("gst").value);
+
+            if (isNaN(liveRatePer10gm) || isNaN(weight) || isNaN(gst) || isNaN(discount)) {
+                document.getElementById("result").innerHTML = "Please enter all values correctly.";
+                return;
+            }
+
+            let liveRatePerGram = liveRatePer10gm / 10;
+            let purityFactor = karat / 24;
+            let basePrice = weight * liveRatePerGram * purityFactor;
+            let makingCost = weight * makingCharge;
+            let discountAmount = (makingCost * discount) / 100;
+            let finalMakingCharge = makingCost - discountAmount;
+
+            let subtotal = basePrice + finalMakingCharge;
+            let gstAmount = (subtotal * gst) / 100;
+            let finalPrice = subtotal + gstAmount;
+
+            document.getElementById("result").innerHTML = `
+                <strong>Gold Value: ₹${basePrice.toFixed(2)}</strong><br>
+                Making Charges: ₹${makingCost.toFixed(2)}<br>
+                Discount: ₹${discountAmount.toFixed(2)}<br>
+                GST (${gst}%): ₹${gstAmount.toFixed(2)}<br>
+                <strong>Final Price: ₹${finalPrice.toFixed(2)}</strong>
+            `;
+        }
+    </script>
+</body>
+</html>
